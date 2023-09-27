@@ -1,0 +1,83 @@
+events {}
+# Изменить проект так, чтобы nginx в контейнере запускался не от рута
+pid        /tmp/nginx.pid;
+http {    
+           
+    # Настроить перенаправление http запросов на https
+    server {                                    
+        # Порты, сертификаты      
+        listen 443 ssl;
+        # Настроить на nginx TLS с самоподписанным сертификатом
+        ssl_certificate /etc/nginx/ssl/example.crt;
+        ssl_certificate_key /etc/nginx/ssl/example.key;
+
+        #location /servername/ {
+        #return 301     proxy_pass http://flask:5000/servername;
+        #}
+        # error_page 404 = /greetings;
+        location /greetings/ {
+            proxy_pass http://flask:5000/greetings;
+        }
+        location / {
+            proxy_pass http://flask:5000/;
+        }
+        # Настроить nginx так, чтобы любой запрос к несуществующему ресурсу перенаправлялся на точку входа `/greetings`.
+                
+        # }
+        # location /greetings {
+        # return 301 https://localhost/greetings/;
+        # } 
+        # Настроить nginx так, чтобы запросы на `/hello`  отображали тоже-самое, что при запросе на `/greetings`,
+        # при этом url в адресной строке браузера не должен меняться. (для обработки запроса на `/hello` 
+        # должен использоваться отдельный блок `/location`).
+        location /hello {
+            rewrite .* /greetings$is_args$args;    #proxy_pass http://flask:5000/greetings;
+        }
+        # Настроить nginx так, чтобы запросы на `/servername` перенаправлялись на `/hostname` 
+        # с соответствующим изменением пути в адресной строке браузера.
+        location /hostname {
+            return 301 /servername;
+        }
+        # Настроить nginx так, чтобы запросы к  приложению по путям `/random-dog`, `/randomdog`  и `/dograndom` 
+        # показывал содержимое страницы https://random.dog/  (текст + картинка/видео/анимация), при этом, содержимое адресной строки не должно меняться.
+        location /randomdog/ {
+            proxy_pass https://random.dog/;
+        }
+        location /random-dog/ {
+            proxy_pass https://random.dog/;
+        }
+        location /dograndom/ {
+            proxy_pass https://random.dog/;
+        }
+        # Настроить nginx так, чтобы запросе `/greetings?user=userName` на странице выводилось `Hello, userName!`
+        location /greetings {                
+            return 200 Hello,$arg_user;
+        }
+        # Настроить nginx так, чтобы запросе `/hi` на странице выводилось `Hello, userName!`
+        # только параметр `user` передаётся через заголовок http запроса `X-User-Name` на точку входа `/hi`        
+        location /hi {
+            add_header X-User-Name $arg_user;
+        return 200 Hello,$arg_user;
+        }
+        # Настроить nginx так, чтобы при запросе на `/envtext` пользователю  возвращалось текстовое сообщение. 
+        # Содержимое этого сообщения должно передаваться в конфиг.файл nginx через переменную среды, задаваемую в `docker-compose.yml.`
+        location /envtext/ {
+        return 200 ${ENV_TXT};
+        }
+    }
+    # Настроить перенаправление http запросов на https
+    server {
+        listen 80;
+        server_name localhost;
+        return 301 https://localhost;
+    }
+    # Изменить проект так, чтобы nginx в контейнере запускался не от рута
+    client_body_temp_path /tmp/client_temp;
+    proxy_temp_path       /tmp/proxy_temp_path;
+    fastcgi_temp_path     /tmp/fastcgi_temp;
+    uwsgi_temp_path       /tmp/uwsgi_temp;
+    scgi_temp_path        /tmp/scgi_temp;                 
+
+}
+
+
